@@ -1,76 +1,82 @@
 from flask import Flask, request, jsonify
 import os
-import subprocess
+import pytesseract
+from PIL import Image
+import fitz  # PyMuPDF
 import re
 
 app = Flask(__name__)
-
-# Caminho do seu pdftotext.exe (conforme informado)
-PDFTOTEXT_PATH = r"C:\Users\Eduarda.Amorim\Downloads\Release-24.08.0-0\poppler-24.08.0\Library\bin\pdftotext.exe"
-
-# Pasta para uploads temporários
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Função para extrair texto do PDF usando seu caminho do pdftotext.exe
-def extrair_texto_pdf(pdf_path):
-    temp_txt = "temp_texto.txt"
-    try:
-        subprocess.run([PDFTOTEXT_PATH, pdf_path, temp_txt], check=True)
-        with open(temp_txt, 'r', encoding='utf-8') as f:
-            texto = f.read()
-        return texto
-    except subprocess.CalledProcessError:
-        return None
-    finally:
-        if os.path.exists(temp_txt):
-            os.remove(temp_txt)
+# Simulação de banco de dados de imóveis
+imoveis_db = {
+    "IMV123": {
+        "id": "IMV123",
+        "endereco": "Rua das Flores, 123",
+        "valor_aluguel": "1.500,00",
+        "condominio": "R$ 300,00",
+        "situacao": "Disponível"
+    },
+    "IMV456": {
+        "id": "IMV456",
+        "endereco": "Av. Brasil, 456",
+        "valor_aluguel": "2.300,00",
+        "condominio": "R$ 450,00",
+        "situacao": "Alugado"
+    }
+}
 
-# Função para extrair imóveis do texto extraído
-def extrair_imoveis(texto):
-    imoveis = []
-    # Divide por "Contrato" para pegar cada imóvel
-    contratos = re.split(r"Contrato", texto)
-    for contrato in contratos[1:]:
-        # Extração de exemplo: valor do aluguel
-        aluguel_match = re.search(r"Aluguel\s*-\s*([\d\.,]+)", contrato)
-        valor_aluguel = aluguel_match.group(1) if aluguel_match else "Valor não encontrado"
-        # Pode adicionar mais extrações aqui
-        imoveis.append({
-            "descricao": contrato[:200],  # descrição resumida
-            "valor_aluguel": valor_aluguel
-        })
-    return imoveis
+# Função para extrair texto de PDF escaneado usando OCR
+def extrair_texto_ocr(pdf_path):
+    texto_completo = ""
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            pix = page.get_pixmap()
+            image_path = os.path.join(UPLOAD_FOLDER, "temp_page.png")
+            pix.save(image_path)
 
-@app.route('/extrair_imoveis', methods=['POST'])
-def extrair_imoveis_api():
-    # Recebe o arquivo enviado
+            image = Image.open(image_path)
+            texto = pytesseract.image_to_string(image, lang='por')
+            texto_completo += texto + "\n"
+            os.remove(image_path)
+    return texto_completo
+
+# Função para extrair dados do texto
+def extrair_dados(texto):
+    match = re.search(r"ID do Imóvel[:\s]*([A-Za-z0-9]+)", texto)
+    id_imovel = match.group(1) if match else "Não encontrado"
+    aluguel_match = re.search(r"Aluguel\s*-\s*([\d\.,]+)", texto)
+    valor_aluguel = aluguel_match.group(1) if aluguel_match else "Não encontrado"
+    
+    return {
+        "id_imovel": id_imovel,
+        "valor_aluguel": valor_aluguel,
+        "resumo": texto[:300]
+    }
+
+@app.route('/extrair_dados_pdf', methods=['POST'])
+def extrair_dados_pdf():
     if 'pdf' not in request.files:
         return jsonify({"error": "Arquivo PDF não enviado"}), 400
 
     arquivo = request.files['pdf']
-    if arquivo.filename == '':
-        return jsonify({"error": "Arquivo vazio"}), 400
-
-    # Salva o arquivo enviado
     caminho_pdf = os.path.join(UPLOAD_FOLDER, arquivo.filename)
     arquivo.save(caminho_pdf)
 
     try:
-        # Extrai o texto usando seu método
-        texto = extrair_texto_pdf(caminho_pdf)
-        if texto is None:
-            return jsonify({"error": "Falha na extração do texto"}), 500
-
-        # Processa o texto para obter imóveis
-        imoveis = extrair_imoveis(texto)
-
-        # Retorna os imóveis em JSON
-        return jsonify({"imoveis": imoveis})
+        texto = extrair_texto_ocr(caminho_pdf)
+        dados_extraidos = extrair_dados(texto)
+        return jsonify(dados_extraidos)
     finally:
-        # Apaga o arquivo PDF enviado após processamento
         os.remove(caminho_pdf)
 
+@app.route('/consultar_imovel/<id_imovel>', methods=['GET'])
+def consultar_imovel(id_imovel):
+    imovel = imoveis_db.get(id_imovel)
+    if imovel:
+        return jsonify(imovel)
+    return jsonify({"error": "Imóvel não encontrado"}), 404
+
 if __name__ == '__main__':
-    # Executa a API
     app.run(debug=True)
