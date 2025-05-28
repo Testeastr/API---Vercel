@@ -1,33 +1,61 @@
-import fitz  # PyMuPDF
-import os
+from fastapi import FastAPI, HTTPException
+from typing import Dict
 
-def extrair_repasses_pdf(caminho_arquivo, exportar=False):
-    # Verifica se o arquivo existe antes de abrir
-    if not os.path.isfile(caminho_arquivo):
-        print(f"Arquivo não encontrado: {caminho_arquivo}")
-        return
+app = FastAPI()
 
-    doc = fitz.open(caminho_arquivo)
-    texto_completo = ""
+# Dados extraídos do PDF (poderiam ser carregados de um arquivo .json, se preferir)
+dados_imoveis: Dict[str, Dict] = {
+    "4969/3": {
+        "id": "4969/3",
+        "endereco": None,
+        "locatario": "Sergio Pacheco Mendes Junior",
+        "valor_aluguel": None,
+        "taxa_administracao": "-544.67",
+        "total_para_repasse": "5172.32",
+        "pagamento_realizado": False
+    },
+    "548/4": {
+        "id": "548/4",
+        "endereco": None,
+        "locatario": "Hunter Douglas do Brasil Ltda",
+        "valor_aluguel": None,
+        "taxa_administracao": "-280.00",
+        "total_para_repasse": "2597.59",
+        "pagamento_realizado": False
+    },
+    "15445/1": {
+        "id": "15445/1",
+        "endereco": None,
+        "locatario": "Bárbara Letícia Arndt",
+        "valor_aluguel": None,
+        "taxa_administracao": "-208.00",
+        "total_para_repasse": "2392.00",
+        "pagamento_realizado": True
+    },
+    "15439/1": {
+        "id": "15439/1",
+        "endereco": None,
+        "locatario": "Guilherme Campestrini",
+        "valor_aluguel": None,
+        "taxa_administracao": "-232.00",
+        "total_para_repasse": "2668.00",
+        "pagamento_realizado": True
+    },
+    "15628/1": {
+        "id": "15628/1",
+        "endereco": None,
+        "locatario": "Janaina Rodrigues Kemper",
+        "valor_aluguel": None,
+        "taxa_administracao": "-248.00",
+        "total_para_repasse": "2852.00",
+        "pagamento_realizado": True
+    }
+    # Pode adicionar mais aqui se quiser
+}
 
-    for pagina in doc:
-        texto_completo += pagina.get_text()
-
-    # Aqui você coloca a lógica de extração dos repasses do texto
-    # Exemplo simples: só printar o texto extraído
-    print("=== Conteúdo extraído do PDF ===")
-    print(texto_completo)
-    print("=== Fim do conteúdo ===")
-
-    # Se quiser exportar para arquivo txt
-    if exportar:
-        nome_arquivo_saida = os.path.splitext(caminho_arquivo)[0] + "_extraido.txt"
-        with open(nome_arquivo_saida, "w", encoding="utf-8") as f:
-            f.write(texto_completo)
-        print(f"Conteúdo exportado para: {nome_arquivo_saida}")
-
-if __name__ == "__main__":
-    # Configure o caminho do PDF aqui:
-    caminho_pdf = r"C:\Users\Eduarda.Amorim\Desktop\API\PDF Welby.pdf"
-
-    extrair_repasses_pdf(caminho_pdf, exportar=False)
+@app.get("/imovel/{imovel_id}")
+def get_imovel(imovel_id: str):
+    imovel = dados_imoveis.get(imovel_id)
+    if not imovel:
+        raise HTTPException(status_code=404, detail="Imóvel não encontrado")
+    return imovel
