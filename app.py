@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 import fitz  # PyMuPDF
-import pytesseract
 import os
 
 app = Flask(__name__)
