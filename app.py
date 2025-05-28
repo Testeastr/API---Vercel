@@ -15,10 +15,11 @@ def extrair_texto_pdf(pdf_path):
     return texto_completo
 
 def extrair_dados(texto):
-    # Aqui você pode implementar sua lógica de extração de dados
-    # Exemplo básico: buscar por palavras-chave ou padrões
-    # Para fins de exemplo, vamos retornar o texto completo
     return {"texto_extraido": texto}
+
+@app.route('/')
+def home():
+    return "API está rodando!"
 
 @app.route('/extrair_dados_pdf', methods=['POST'])
 def extrair_dados_pdf():
