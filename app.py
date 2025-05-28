@@ -53,6 +53,10 @@ dados_imoveis: Dict[str, Dict] = {
     # Pode adicionar mais aqui se quiser
 }
 
+@app.get("/")
+def root():
+    return {"message": "API FastAPI rodando!"}
+
 @app.get("/imovel/{imovel_id}")
 def get_imovel(imovel_id: str):
     imovel = dados_imoveis.get(imovel_id)
