@@ -1,4 +1,6 @@
 Flask
-pytesseract
-pillow
+gunicorn
+easyocr
 PyMuPDF
+Pillow
+gunicorn
