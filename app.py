@@ -1,41 +1,33 @@
-from flask import Flask, request, jsonify
 import fitz  # PyMuPDF
 import os
 
-app = Flask(__name__)
+def extrair_repasses_pdf(caminho_arquivo, exportar=False):
+    # Verifica se o arquivo existe antes de abrir
+    if not os.path.isfile(caminho_arquivo):
+        print(f"Arquivo não encontrado: {caminho_arquivo}")
+        return
 
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def extrair_texto_pdf(pdf_path):
+    doc = fitz.open(caminho_arquivo)
     texto_completo = ""
-    with fitz.open(pdf_path) as doc:
-        for page in doc:
-            texto_completo += page.get_text()
-    return texto_completo
 
-def extrair_dados(texto):
-    return {"texto_extraido": texto}
+    for pagina in doc:
+        texto_completo += pagina.get_text()
 
-@app.route('/')
-def home():
-    return "API está rodando!"
+    # Aqui você coloca a lógica de extração dos repasses do texto
+    # Exemplo simples: só printar o texto extraído
+    print("=== Conteúdo extraído do PDF ===")
+    print(texto_completo)
+    print("=== Fim do conteúdo ===")
 
-@app.route('/extrair_dados_pdf', methods=['POST'])
-def extrair_dados_pdf():
-    if 'pdf' not in request.files:
-        return jsonify({"error": "Arquivo PDF não enviado"}), 400
+    # Se quiser exportar para arquivo txt
+    if exportar:
+        nome_arquivo_saida = os.path.splitext(caminho_arquivo)[0] + "_extraido.txt"
+        with open(nome_arquivo_saida, "w", encoding="utf-8") as f:
+            f.write(texto_completo)
+        print(f"Conteúdo exportado para: {nome_arquivo_saida}")
 
-    arquivo = request.files['pdf']
-    caminho_pdf = os.path.join(UPLOAD_FOLDER, arquivo.filename)
-    arquivo.save(caminho_pdf)
+if __name__ == "__main__":
+    # Configure o caminho do PDF aqui:
+    caminho_pdf = r"C:\Users\Eduarda.Amorim\Desktop\API\PDF Welby.pdf"
 
-    try:
-        texto = extrair_texto_pdf(caminho_pdf)
-        dados_extraidos = extrair_dados(texto)
-        return jsonify(dados_extraidos)
-    finally:
-        os.remove(caminho_pdf)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    extrair_repasses_pdf(caminho_pdf, exportar=False)
